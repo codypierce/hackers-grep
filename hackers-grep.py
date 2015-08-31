@@ -448,7 +448,7 @@ if __name__ == '__main__':
 	parser.add_option("-n", "--imports-only", dest="imports_only", action="store_true", default=False, help="Only search Import section strings")
 	parser.add_option("-a", "--all-the-things", dest="att", action="store_true", default=False, help="Search strings, import, exports")
 	parser.add_option("-s", "--symbols", dest="symbols", action="store_true", default=False, help="Include symbols in search")
-	parser.add_option("-p", "--symbol-path", dest="symbol_path", type="str", default=r'C:\Windows\Symbols', help="Symbol path")
+	parser.add_option("-p", "--symbol-path", dest="symbol_path", type="str", default=r'C:\Windows\Symbols', help="Symbol path (default: C:\Windows\Symbols)")
 	parser.add_option("-e", "--export-filter", dest="export_filter", help="Search modules matching this Export regex")
 	parser.add_option("-i", "--import-filter", dest="import_filter", help="Search modules matching this Import regex")
 	parser.add_option("-f", "--show-info", dest="show_info", action="store_true", default=False, help="Display file details size and modification time")

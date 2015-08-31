@@ -1,7 +1,9 @@
 #hackers-grep
 hackers-grep is a tool that enables you to search for strings in PE files. The tool is capable of searching strings, imports, exports, and public symbols (like woah) using regular expressions.
 
-I have used this tool to find functionality across Windows that I want to investigate further. It has allowed me to answer questions like "How many libraries process XML?". It's also fun to poke around with.
+I have used this tool to find functionality across Windows that I want to investigate further. It has allowed me to answer questions like "How many libraries process XML?".
+
+It's also fun to poke around with.
 
 #Installation
 
@@ -26,7 +28,7 @@ Options:
   -a, --all-the-things  Search strings, import, exports
   -s, --symbols         Include symbols in search
   -p SYMBOL_PATH, --symbol-path=SYMBOL_PATH
-                        Symbol path
+                        Symbol path (default: C:\Windows\Symbols)
   -e EXPORT_FILTER, --export-filter=EXPORT_FILTER
                         Search modules matching this Export regex
   -i IMPORT_FILTER, --import-filter=IMPORT_FILTER
@@ -38,7 +40,7 @@ Options:
 #Examples
 
 ###Search for every dll that imports wininet!InternetOpen
-This example demonstrates how to search imports. Itwill search C:\Windows\System32 for any file ending in .dll that imports InternetOpenA or InternetOpenW.
+This example demonstrates how to search imports. It will search C:\Windows\System32 for any file ending in .dll that imports InternetOpenA or InternetOpenW.
 ```
 Z:\hackers-grep>hackers-grep.py -n c:\windows\system32 .*.dll "InternetOpen[A,W]"
 c:\windows\system32\msidcrl30.dll  WININET.dll!InternetOpenA
@@ -51,7 +53,7 @@ c:\windows\system32\winethc.dll    WININET.dll!InternetOpenW
 c:\windows\system32\wuwebv.dll     WININET.dll!InternetOpenW
 ```
 
-By using the option "-f" we can also print information about the file, including the useful "File description"
+By using the option "-f" we can also print information about the file, including the useful "File description" property.
 ```
 Z:\hackers-grep>hackers-grep.py -f -n c:\windows\system32 .*.dll "InternetOpen[A,W]"
 c:\windows\system32\msidcrl30.dll  [ 468 KB] [07/14/2009] [Microsoft Corporation] [IDCRL Dynamic Link Library] WININET.dll!InternetOpenA
