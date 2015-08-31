@@ -1,7 +1,7 @@
 #hackers-grep
 hackers-grep is a tool that enables you to search for strings in PE files. The tool is capable of searching strings, imports, exports, and public symbols (like woah) using regular expressions.
 
-I have used this tool to find functionality across Windows that I want to investigate further. It has allowed me to answer questions like "How many libraries process XML". It's also fun to poke around with.
+I have used this tool to find functionality across Windows that I want to investigate further. It has allowed me to answer questions like "How many libraries process XML?". It's also fun to poke around with.
 
 #Installation
 
