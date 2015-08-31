@@ -117,14 +117,8 @@ def make_wstring(chars, nonprintable=False, min_length=3):
 	return False
 
 # Matches the string regex to files exports
-def match_exports(path, string_regex):
+def match_exports(pef, string_regex):
 	sre = re.compile(string_regex, re.I)
-
-	try:
-		pef = dislib.PEFile(path)
-	except dislib.PEException, e:
-		debug("%s: %s" % (path, e))
-		return False
 
 	strings = []        
 	if pef.Exports:
@@ -166,22 +160,16 @@ def get_pe(abs_path, module_name):
 imap = {}
 
 # Matches the string regex to files imports
-def match_imports(path, string_regex):
+def match_imports(pef, pe_path, string_regex):
 	global imap
 	sre = re.compile(string_regex, re.I)
-
-	try:
-		pef = dislib.PEFile(path)
-	except dislib.PEException, e:
-		debug("%s: %s" % (path, e))
-		return False
 
 	strings = []
 	if pef.Imports:
 		for i in pef.Imports:
 			if i.ModuleName not in imap.keys():
 				imap[i.ModuleName] = {}
-				im = get_pe(path, i.ModuleName)
+				im = get_pe(pe_path, i.ModuleName)
 				imap[i.ModuleName]['im'] = im
 				imap[i.ModuleName]['ords'] = {}
 				if not im:
@@ -215,15 +203,9 @@ def dump_section(s):
 	print "size:\t%x" % s.Size
 	print "data size:\t%x" % len(s.Data)
 
-def match_string(path, string_regex, import_filter=None, export_filter=None, symbols=False, symbol_path=None, min_string=3, max_string=1024):
+def match_string(pef, pe_path, string_regex, import_filter=None, export_filter=None, symbols=False, symbol_path=None, min_string=3, max_string=1024):
 	sre = re.compile(string_regex, re.I)
-	ire = None
-	ere = None
-	if import_filter:
-		ire = re.compile(import_filter, re.I)
-	if export_filter:
-		ere = re.compile(export_filter, re.I)
-	
+
 	if symbols:
 		if not symbol_path:
 			info("Asking to search symbols with no path, skipping symbol search")
@@ -232,29 +214,6 @@ def match_string(path, string_regex, import_filter=None, export_filter=None, sym
 			info("Symbol path %s is not a directory, skipping symbol search" % symbol_path)
 			symbols = False
 			
-	try:
-		pef = dislib.PEFile(path)
-	except dislib.PEException, e:
-		debug("%s: %s" % (path, e))
-		return False
-		
-	if ire:
-		bail = True
-		if pef.Imports:
-			for i in pef.Imports:
-				if ire.match(i.Name) or ire.match(i.ModuleName):
-					bail = False
-		if bail:
-			return False
-	if ere:
-		bail = True
-		if pef.Exports:
-			for e in pef.Exports:
-				if ere.match(e.Name):
-					bail = False
-		if bail:
-			return False
-	
 	c_strings = []
 	w_strings = []
 
@@ -341,10 +300,11 @@ def match_string(path, string_regex, import_filter=None, export_filter=None, sym
 					w_strings.append(s)
 
 	# If we are also searching symbols lets parse those out
+	symbol_strings = []
 	if symbols:
 		pdb_files = []
 		public_symbols = None
-		pdb_search_path = os.path.join(symbol_path, os.path.basename(path).split(os.path.extsep)[0]) + os.path.extsep + "pdb"
+		pdb_search_path = os.path.join(symbol_path, os.path.basename(pe_path).split(os.path.extsep)[0]) + os.path.extsep + "pdb"
 		debug("Getting symbols from %s" % pdb_search_path)
 		if os.path.exists(pdb_search_path):
 			rc = walk_dir(pdb_search_path, pdb_files, max_depth=2)
@@ -355,9 +315,9 @@ def match_string(path, string_regex, import_filter=None, export_filter=None, sym
 				public_symbols = get_public_symbols(p)
 				if public_symbols:
 					for sym in public_symbols:
-						c_strings.append(sym)
+						symbol_strings.append(sym)
 		else:
-			error("Invalid symbol path ignoring search")
+			debug("Invalid symbol path %s ignoring search" % pdb_search_path)
 				
 	match_strings = []
 	# check c strings
@@ -368,10 +328,19 @@ def match_string(path, string_regex, import_filter=None, export_filter=None, sym
 	for s in w_strings:
 		if sre.match(s):
 			match_strings.append(unicode(s, errors="ignore"))
+
+	# check symbol strings
+	for s in symbol_strings:
+		if sre.match(s):
+			match_strings.append(s)
+
 	return match_strings
 		
-def dump_match(file_path, match_string, show_info=False):
+def dump_match(file_path, match_string, justify=None, show_info=False):
 	output = ""
+	if justify:
+		for x in range(justify - len(file_path)): file_path += " "
+
 	if show_info:
 		(mode, ino, dev, nlink, uid, gid, size, atime, mtime, ctime) = os.stat(file_path)
 		if size < 1024:
@@ -387,9 +356,9 @@ def dump_match(file_path, match_string, show_info=False):
 			vendor = details["vendor"]
 			description = details["description"]
 
-		output = u"%s    [%d %s] [%s] [%s] [%s]\t" % (file_path, size, size_o, time.strftime("%m/%d/%Y", time.gmtime(mtime)), vendor, description)
+		output = u"%s  [%5d %s] [%s] [%s] [%s] " % (file_path, size, size_o, time.strftime("%m/%d/%Y", time.gmtime(mtime)), vendor, description)
 	else:
-		output = u"%s    " % (file_path)
+		output = u"%s  " % (file_path)
 	
 	output += match_string
 
@@ -398,28 +367,61 @@ def dump_match(file_path, match_string, show_info=False):
 	except UnicodeEncodeError, e:
 		error("Unicode exception printing match for %s" % file_path)
 
-def file_grep(f, string_regex, log_level, att=False, exports_only=False, imports_only=False, import_filter=None, export_filter=None, symbols=False, symbol_path=None):
+def file_grep(pe_path, string_regex, log_level, att=False, exports_only=False, imports_only=False, import_filter=None, export_filter=None, symbols=False, symbol_path=None):
+	# open PE file
+	try:
+		pef = dislib.PEFile(pe_path)
+	except dislib.PEException, e:
+		debug("%s: %s" % (pe_path, e))
+		return False
+
+	# apply filters
+	ire = None
+	ere = None
+
+	if import_filter:
+		ire = re.compile(import_filter, re.I)
+	if export_filter:
+		ere = re.compile(export_filter, re.I)
+
+	if ire:
+		bail = True
+		if pef.Imports:
+			for i in pef.Imports:
+				if ire.match(i.Name) or ire.match(i.ModuleName):
+					bail = False
+		if bail:
+			return False
+
+	if ere:
+		bail = True
+		if pef.Exports:
+			for e in pef.Exports:
+				if ere.match(e.Name):
+					bail = False
+		if bail:
+			return False
 
 	matched_strings = []
 	if att:
-		matched = match_exports(f, string_regex)
+		matched = match_exports(pef, string_regex)
 		if matched:
 			matched_strings += matched
 
-		matched = match_imports(f, string_regex)
+		matched = match_imports(pef, pe_path, string_regex)
 		if matched:
 			matched_strings += matched
 
-		matched = match_string(f, string_regex, import_filter=import_filter, export_filter=export_filter, symbols=symbols, symbol_path=symbol_path)
+		matched = match_string(pef, pe_path, string_regex, import_filter=import_filter, export_filter=export_filter, symbols=symbols, symbol_path=symbol_path)
 		if matched:
 			matched_strings += matched
 
 	elif exports_only:
-		matched_strings = match_exports(f, string_regex)
+		matched_strings = match_exports(pef, string_regex)
 	elif imports_only:
-		matched_strings = match_imports(f, string_regex)
+		matched_strings = match_imports(pef, pe_path, string_regex)
 	else:
-		matched_strings = match_string(f, string_regex, import_filter=import_filter, export_filter=export_filter, symbols=symbols, symbol_path=symbol_path)
+		matched_strings = match_string(pef, pe_path, string_regex, import_filter=import_filter, export_filter=export_filter, symbols=symbols, symbol_path=symbol_path)
 	return matched_strings
 
 def run_grep(abs_path, string_regex, log_level, **kwargs):
@@ -441,7 +443,7 @@ if __name__ == '__main__':
 	# parse options
 	usage = "usage: %prog [options] <search path> <file regex> <string regex>"
 	parser = OptionParser(usage=usage)
-	parser.add_option("-d", "--max-depth", dest="max_depth", type="int", default=1, help="Maximum directory recursion depth")
+	parser.add_option("-d", "--max-depth", dest="max_depth", type="int", default=1, help="Maximum directory recursion depth (default: 1)")
 	parser.add_option("-x", "--exports-only", dest="exports_only", action="store_true", default=False, help="Only search Export section strings")
 	parser.add_option("-n", "--imports-only", dest="imports_only", action="store_true", default=False, help="Only search Import section strings")
 	parser.add_option("-a", "--all-the-things", dest="att", action="store_true", default=False, help="Search strings, import, exports")
@@ -528,7 +530,7 @@ if __name__ == '__main__':
 	pool = Pool()
 	results = []
 	results = [pool.apply_async(run_grep, (f, string_regex, log_level),
-                                 		{'att': att,
+										{'att': att,
 										 'exports_only': exports_only,
 										 'imports_only': imports_only,
 										 'import_filter': options.import_filter,
@@ -549,8 +551,15 @@ if __name__ == '__main__':
 	
 
 	debug("Processing matches")
+
+	# get max file path length to pretty up the text
+	adjust = 0
 	for (f, s) in matches:
-		dump_match(f, s, show_info=show_info)
+		if len(f) > adjust:
+			adjust = len(f)
+		
+	for (f, s) in matches:
+		dump_match(f, s, justify=adjust, show_info=show_info)
 
 	etime = int(time.time())
 	debug("Finished in %d seconds" % (etime - stime))
