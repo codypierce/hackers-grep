@@ -1,17 +1,17 @@
-#hackers-grep
+# hackers-grep
 hackers-grep is a tool that enables you to search for strings in PE files. The tool is capable of searching strings, imports, exports, and public symbols (like woah) using regular expressions.
 
 I have used this tool to find functionality across Windows that I want to investigate further. It has allowed me to answer questions like "How many libraries process XML?".
 
 It's also fun to poke around with.
 
-#Installation
+# Installation
 
 1. Install comtypes (https://pypi.python.org/pypi/comtypes)
 2. Install pywin32 (http://sourceforge.net/projects/pywin32/files/pywin32/)
 3. Install Microsoft debugging symbols (https://msdn.microsoft.com/en-us/windows/hardware/gg463028.aspx)
 
-#Usage
+# Usage
 
 The options for hackers-grep are listed below. Keep in mind that all regular expression strings should use pythons "re" module sytax and are case insensitive. For more information please see https://docs.python.org/2/library/re.html.
 
@@ -37,9 +37,9 @@ Options:
   -v, --verbose         Verbose output
 ```
 
-#Examples
+# Examples
 
-###Search for every dll that imports wininet!InternetOpen
+### Search for every dll that imports wininet!InternetOpen
 This example demonstrates how to search imports. It will search C:\Windows\System32 for any file ending in .dll that imports InternetOpenA or InternetOpenW.
 ```
 Z:\hackers-grep>hackers-grep.py -n c:\windows\system32 .*.dll "InternetOpen[A,W]"
@@ -66,7 +66,7 @@ c:\windows\system32\winethc.dll    [  81 KB] [07/14/2009] [Microsoft Corporation
 c:\windows\system32\wuwebv.dll     [ 169 KB] [07/20/2015] [Microsoft Corporation] [Windows Update Vista Web Control] WININET.dll!InternetOpenW
 ```
 
-###Search for every dll that exports DllGetClassObject
+### Search for every dll that exports DllGetClassObject
 This example demonstrates how to search exports. It will search C:\Windows\System32 for any file ending in .dll that exports the OLE function DllGetClassObject
 ```
 Z:\hackers-grep>hackers-grep.py -x c:\windows\system32 .*.dll DllGetClassObject
@@ -80,7 +80,7 @@ c:\windows\system32\amstream.dll          <export>!DllGetClassObject
 ...
 ```
 
-###Search for every occurrence of the string "xmlns" 
+### Search for every occurrence of the string "xmlns" 
 This example will search C:\Windows\System32 for every occurance of the string "xmlns" in a dll.
 ```
 Z:\hackers-grep>hackers-grep.py c:\windows\system32 .*.dll xmlns.*
@@ -101,7 +101,7 @@ c:\windows\system32\WlanMM.dll       xmlns:an='http://www.microsoft.com/Availabl
 <snip>
 ```
 
-###Search for every RPC server that also imports CreateFile
+### Search for every RPC server that also imports CreateFile
 This example shows how to use the import filter "-i" option. In this case, we want to find any dll that imports CreateFile, but filter only those that import RpcServerListen as well.
 
 ```
@@ -131,7 +131,7 @@ c:\windows\system32\wlansvc.dll   KERNEL32.dll!CreateFileW
 c:\windows\system32\wwansvc.dll   KERNEL32.dll!CreateFileW
 ```
 
-###Search symbols like a boss
+### Search symbols like a boss
 This example shows my favorite use of hackers-grep. The ability to combine some of the previously shown features and the verbose symbol information makes this a nice tool for finding that next bug :)
 
 In this example we want to use debugging symbols (.pdb) to search for every occurance of hfont.
@@ -177,6 +177,6 @@ c:\windows\system32\imapi2fs.dll  CFsiStream::Read
 <snip>
 ```
 
-#Known issues
+# Known issues
 Its written in Python, so it can be slow, especially if you try and search the entire system drive while processing symbols
  
